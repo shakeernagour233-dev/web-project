@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Task Tracker – HTML5/JS/CSS3</title>
+  <meta name="description" content="A simple, single-file Task Tracker demonstrating HTML5, CSS3, and vanilla JavaScript with localStorage.">
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #121822;
+      --text: #e7eef7;
+      --muted: #a9b4c0;
+      --accent: #4f8cff;
+      --accent-2: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --ring: color-mix(in srgb, var(--accent) 30%, transparent);
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --radius: 18px;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f7fafc;
+        --panel: #ffffff;
+        --text: #0b1020;
+        --muted: #5a6675;
+        --accent: #2563eb;
+        --accent-2: #16a34a;
+        --danger: #dc2626;
+        --warning: #d97706;
+        --ring: color-mix(in srgb, var(--accent) 25%, transparent);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 70% -10%, color-mix(in srgb, var(--accent) 12%, var(--bg)) 0%, var(--bg) 45%) fixed;
+      color: var(--text);
+      display: grid;
+      place-items: start center;
+      padding: 40px 16px 80px;
+    }
+
+    .app {
+      width: min(920px, 100%);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 96%, transparent) 0%, var(--panel) 100%);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,0.06);
+      overflow: clip;
+    }
+
+    header {
+      padding: 28px 24px;
+      display: grid;
+      gap: 6px;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, var(--panel)) 0%, var(--panel) 100%);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    header h1 {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 28px);
+      letter-spacing: 0.2px;
+    }
+    header p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .controls {
+      display: grid;
+      gap: 10px;
+      padding: 16px 24px 22px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .row { display: grid; gap: 10px; }
+    @media (min-width: 720px) {
+      .row { grid-template-columns: 1fr auto auto auto; align-items: center; }
+    }
+
+    input[type="text"], input[type="date"], select {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
+      color: var(--text);
+      outline: none;
+    }
+    input[type="text"]:focus,
+    input[type="date"]:focus,
+    select:focus { box-shadow: 0 0 0 4px var(--ring); border-color: var(--accent); }
+
+    .btn {
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 18%, var(--panel)) 0%, var(--panel) 100%);
+      color: var(--text);
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .05s ease, filter .15s ease;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 28%, var(--panel)) 0%, var(--panel) 100%); border-color: color-mix(in srgb, var(--accent) 40%, var(--panel)); }
+    .btn-danger { background: linear-gradient(180deg, color-mix(in srgb, var(--danger) 28%, var(--panel)) 0%, var(--panel) 100%); border-color: color-mix(in srgb, var(--danger) 40%, var(--panel)); }
+
+    .toolbar {
+      display: grid;
+      gap: 10px;
+      padding: 16px 24px;
+    }
+    @media (min-width: 720px) {
+      .toolbar { grid-template-columns: 1fr auto auto; align-items: center; }
+    }
+
+    .tabs { display: inline-flex; background: color-mix(in srgb, var(--panel) 88%, transparent); border-radius: 999px; padding: 4px; border: 1px solid rgba(255,255,255,0.08); }
+    .tab { border: 0; background: transparent; padding: 8px 14px; border-radius: 999px; color: var(--muted); cursor: pointer; font-weight: 600; }
+    .tab.active { background: var(--panel); color: var(--text); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); }
+
+    .list { padding: 6px 10px 16px; }
+    .task {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 14px;
+      margin: 10px 14px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, transparent) 0%, var(--panel) 100%);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .task input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+
+    .title { font-weight: 650; }
+    .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; font-size: 12px; border: 1px solid rgba(255,255,255,0.12); }
+    .p-high { background: color-mix(in srgb, var(--danger) 18%, transparent); }
+    .p-med { background: color-mix(in srgb, var(--warning) 18%, transparent); }
+    .p-low { background: color-mix(in srgb, var(--accent-2) 18%, transparent); }
+
+    .actions { display: inline-flex; gap: 8px; }
+    .icon-btn { background: transparent; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 6px 8px; cursor: pointer; color: var(--text); }
+    .icon-btn:hover { background: rgba(255,255,255,0.06); }
+
+    .muted { color: var(--muted); }
+    .strike { text-decoration: line-through; opacity: 0.7; }
+
+    footer { padding: 16px 24px 28px; color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 1px, 1px); white-space: nowrap; border: 0; }
+  </style>
+</head>
+<body>
+  <main class="app" role="application" aria-label="Task Tracker">
+    <header>
+      <h1>Task Tracker</h1>
+      <p>Simple HTML5 • CSS3 • JavaScript (no frameworks) — persists to <code>localStorage</code>.</p>
+    </header>
+
+    <section class="controls" aria-labelledby="add-task-heading">
+      <h2 id="add-task-heading" class="sr-only">Add Task</h2>
+      <div class="row">
+        <input id="task-title" type="text" placeholder="Add a new task… (e.g., Prepare interview notes)" aria-label="Task title" />
+        <input id="task-date" type="date" aria-label="Due date" />
+        <select id="task-priority" aria-label="Priority">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+        <button id="add-btn" class="btn btn-primary" aria-label="Add task">➕ Add</button>
+      </div>
+    </section>
+
+    <section class="toolbar" aria-label="Filters and search">
+      <div class="tabs" role="tablist" aria-label="Filter tasks">
+        <button class="tab active" data-filter="all" role="tab" aria-selected="true">All</button>
+        <button class="tab" data-filter="active" role="tab" aria-selected="false">Active</button>
+        <button class="tab" data-filter="completed" role="tab" aria-selected="false">Completed</button>
+      </div>
+      <input id="search" type="text" placeholder="Search tasks" aria-label="Search tasks" />
+      <select id="sort" aria-label="Sort tasks">
+        <option value="created_desc">Newest</option>
+        <option value="created_asc">Oldest</option>
+        <option value="priority_desc">Priority: High → Low</option>
+        <option value="priority_asc">Priority: Low → High</option>
+        <option value="date_asc">Due date: Earliest</option>
+        <option value="date_desc">Due date: Latest</option>
+      </select>
+    </section>
+
+    <section class="list" id="list" aria-live="polite"></section>
+
+    <footer>
+      <div id="count">0 tasks</div>
+      <div style="display:flex; gap:8px;">
+        <button id="clear-completed" class="btn">Clear Completed</button>
+        <button id="reset" class="btn btn-danger">Reset All</button>
+      </div>
+    </footer>
+  </main>
+
+  <template id="task-template">
+    <article class="task" data-id="">
+      <input type="checkbox" aria-label="Mark complete" />
+      <div>
+        <div class="title"></div>
+        <div class="meta"></div>
+      </div>
+      <div class="actions">
+        <button class="icon-btn" data-action="edit" title="Edit">✏️</button>
+        <button class="icon-btn" data-action="delete" title="Delete">🗑️</button>
+      </div>
+    </article>
+  </template>
+
+  <script>
+    // Utility helpers
+    const $ = (sel, ctx=document) => ctx.querySelector(sel);
+    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+
+    const storeKey = 'cts-task-tracker-v1';
+    const priorityRank = { high: 3, medium: 2, low: 1 };
+
+    const state = {
+      tasks: [],
+      filter: 'all', // all | active | completed
+      search: '',
+      sort: 'created_desc',
+    };
+
+    function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+    function save() {
+      localStorage.setItem(storeKey, JSON.stringify({ tasks: state.tasks }));
+    }
+    function load() {
+      try {
+        const raw = localStorage.getItem(storeKey);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.tasks)) state.tasks = parsed.tasks;
+      } catch (e) { console.warn('Failed to load store', e); }
+    }
+
+    // Rendering
+    function render() {
+      const list = $('#list');
+      list.innerHTML = '';
+
+      let tasks = [...state.tasks];
+
+      // Filter
+      if (state.filter === 'active') tasks = tasks.filter(t => !t.done);
+      if (state.filter === 'completed') tasks = tasks.filter(t => t.done);
+
+      // Search
+      if (state.search.trim()) {
+        const q = state.search.trim().toLowerCase();
+        tasks = tasks.filter(t => t.title.toLowerCase().includes(q));
+      }
+
+      // Sort
+      tasks.sort((a, b) => {
+        switch (state.sort) {
+          case 'created_asc': return a.created - b.created;
+          case 'created_desc': return b.created - a.created;
+          case 'priority_desc': return priorityRank[b.priority] - priorityRank[a.priority];
+          case 'priority_asc': return priorityRank[a.priority] - priorityRank[b.priority];
+          case 'date_asc': return (a.due || Infinity) - (b.due || Infinity);
+          case 'date_desc': return (b.due || -Infinity) - (a.due || -Infinity);
+          default: return 0;
+        }
+      });
+
+      // Render items
+      const tpl = $('#task-template');
+      tasks.forEach(task => {
+        const node = tpl.content.firstElementChild.cloneNode(true);
+        node.dataset.id = task.id;
+        const checkbox = node.querySelector('input[type="checkbox"]');
+        const title = node.querySelector('.title');
+        const meta = node.querySelector('.meta');
+
+        checkbox.checked = task.done;
+        title.textContent = task.title;
+        title.classList.toggle('strike', task.done);
+
+        const chips = [];
+        if (task.priority) {
+          const cls = task.priority === 'high' ? 'p-high' : task.priority === 'medium' ? 'p-med' : 'p-low';
+          chips.push(`<span class="chip ${cls}">Priority: ${task.priority}</span>`);
+        }
+        if (task.due) {
+          const d = new Date(task.due);
+          const label = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+          chips.push(`<span class="chip">Due: ${label}</span>`);
+        }
+        chips.push(`<span class="chip">Created: ${new Date(task.created).toLocaleDateString()}</span>`);
+        meta.innerHTML = chips.join(' ');
+
+        list.appendChild(node);
+      });
+
+      // Count
+      const total = state.tasks.length;
+      const active = state.tasks.filter(t => !t.done).length;
+      $('#count').textContent = `${active} active / ${total} total`;
+
+      // Tabs UI
+      $$('.tab').forEach(tab => tab.classList.toggle('active', tab.dataset.filter === state.filter));
+    }
+
+    // Actions
+    function addTask() {
+      const titleInput = $('#task-title');
+      const dateInput = $('#task-date');
+      const prioSelect = $('#task-priority');
+
+      const title = titleInput.value.trim();
+      if (!title) {
+        titleInput.focus();
+        titleInput.setAttribute('aria-invalid', 'true');
+        setTimeout(() => titleInput.removeAttribute('aria-invalid'), 1200);
+        return;
+      }
+
+      const task = {
+        id: uid(),
+        title,
+        due: dateInput.value ? new Date(dateInput.value).getTime() : null,
+        priority: prioSelect.value,
+        done: false,
+        created: Date.now(),
+      };
+      state.tasks.unshift(task);
+      titleInput.value = '';
+      dateInput.value = '';
+      prioSelect.value = 'medium';
+      save();
+      render();
+    }
+
+    function toggleTask(id, done) {
+      const t = state.tasks.find(t => t.id === id);
+      if (!t) return;
+      t.done = done;
+      save();
+      render();
+    }
+
+    function deleteTask(id) {
+      state.tasks = state.tasks.filter(t => t.id !== id);
+      save();
+      render();
+    }
+
+    function editTask(id) {
+      const t = state.tasks.find(t => t.id === id);
+      if (!t) return;
+      const newTitle = prompt('Edit task title:', t.title);
+      if (newTitle && newTitle.trim()) {
+        t.title = newTitle.trim();
+        save();
+        render();
+      }
+    }
+
+    function clearCompleted() {
+      state.tasks = state.tasks.filter(t => !t.done);
+      save();
+      render();
+    }
+
+    function resetAll() {
+      if (!confirm('This will delete ALL tasks. Continue?')) return;
+      state.tasks = [];
+      save();
+      render();
+    }
+
+    // Event bindings
+    document.addEventListener('DOMContentLoaded', () => {
+      load();
+      render();
+
+      $('#add-btn').addEventListener('click', addTask);
+      $('#task-title').addEventListener('keydown', (e) => { if (e.key === 'Enter') addTask(); });
+
+      // Tabs
+      $$('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          state.filter = tab.dataset.filter;
+          render();
+        });
+      });
+
+      // Search & Sort
+      $('#search').addEventListener('input', (e) => { state.search = e.target.value; render(); });
+      $('#sort').addEventListener('change', (e) => { state.sort = e.target.value; render(); });
+
+      // List actions via event delegation
+      $('#list').addEventListener('click', (e) => {
+        const article = e.target.closest('.task');
+        if (!article) return;
+        const id = article.dataset.id;
+
+        if (e.target.matches('input[type="checkbox"]')) {
+          toggleTask(id, e.target.checked);
+        }
+        if (e.target.matches('[data-action="delete"]')) {
+          deleteTask(id);
+        }
+        if (e.target.matches('[data-action="edit"]')) {
+          editTask(id);
+        }
+      });
+
+      $('#clear-completed').addEventListener('click', clearCompleted);
+      $('#reset').addEventListener('click', resetAll);
+    });
+  </script>
+</body>
+</html>
